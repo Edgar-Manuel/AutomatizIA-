@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Next.js
+.next
+out
+next-env.d.ts
+
+# Build
+dist
+build
+
+# Env
+.env
+.env.local
+.env*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Supabase
+supabase/.branches
+supabase/.temp
+supabase/seed.sql.local
+
+# Tests
+coverage
+.vitest
+
+# Drizzle generated artifacts (we keep migrations, ignore meta noise if needed)
+# drizzle/meta is committed by design for reproducibility
