@@ -1,20 +1,25 @@
 import { defineConfig } from "drizzle-kit";
 
-const host = process.env.DATABASE_HOST;
+const host = process.env.DATABASE_HOST ?? process.env.POSTGRES_HOST;
+const urlEnv =
+  process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? process.env.POSTGRES_URL_NON_POOLING;
 
 const dbCredentials = host
   ? {
       host,
       port: Number(process.env.DATABASE_PORT ?? 5432),
-      user: process.env.DATABASE_USER ?? "postgres",
-      password: requireEnv("DATABASE_PASSWORD"),
-      database: process.env.DATABASE_NAME ?? "postgres",
+      user: process.env.DATABASE_USER ?? process.env.POSTGRES_USER ?? "postgres",
+      password: requireValue(
+        "DATABASE_PASSWORD/POSTGRES_PASSWORD",
+        process.env.DATABASE_PASSWORD ?? process.env.POSTGRES_PASSWORD,
+      ),
+      database: process.env.DATABASE_NAME ?? process.env.POSTGRES_DATABASE ?? "postgres",
       ssl:
         (process.env.DATABASE_SSL ?? "require") === "false"
           ? false
           : ({ rejectUnauthorized: false } as const),
     }
-  : { url: requireEnv("DATABASE_URL") };
+  : { url: requireValue("DATABASE_URL/POSTGRES_URL", urlEnv) };
 
 export default defineConfig({
   dialect: "postgresql",
@@ -25,12 +30,11 @@ export default defineConfig({
   strict: true,
 });
 
-function requireEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) {
+function requireValue(name: string, value: string | undefined): string {
+  if (!value) {
     throw new Error(
-      `${name} is not set. Either set DATABASE_URL or DATABASE_HOST/DATABASE_PASSWORD/...`,
+      `${name} is not set. Either set DATABASE_URL/POSTGRES_URL or DATABASE_HOST/POSTGRES_HOST + password.`,
     );
   }
-  return v;
+  return value;
 }
