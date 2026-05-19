@@ -17,27 +17,58 @@ con descuento atómico de créditos.
 - pnpm como package manager
 - Vitest para tests
 
-## Setup local
+## Setup contra Supabase cloud (recomendado)
 
 ```bash
 # 1. Dependencias
 pnpm install
 
-# 2. Variables de entorno
+# 2. Variables de entorno (proyecto cloud)
 cp .env.example .env.local
-# Rellena ANTHROPIC_API_KEY. El resto vienen del paso 3.
+# Rellena en .env.local:
+#   NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable o anon key>
+#   SUPABASE_SERVICE_ROLE_KEY=<secret o service_role key>
+#   ANTHROPIC_API_KEY=<tu key>
+#
+# Para Drizzle en runtime, dos opciones:
+#   - DATABASE_URL=postgresql://postgres.<ref>:<pwd-URL-encoded>@<pooler-host>:5432/postgres
+#   - O componentes separados (preferido si el password trae %, @, etc):
+#       DATABASE_HOST=aws-1-eu-central-2.pooler.supabase.com
+#       DATABASE_PORT=5432
+#       DATABASE_USER=postgres.<project-ref>
+#       DATABASE_PASSWORD=<password raw, sin encoding>
+#       DATABASE_NAME=postgres
+#       DATABASE_SSL=require
 
-# 3. Supabase local (necesitas Docker corriendo)
-pnpm supabase:start
-# Cuando termine te imprime las claves. Copia anon key y service_role
-# en .env.local (NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY).
-# La migración inicial (supabase/migrations/) se aplica automáticamente.
+# 3. Aplica la migración inicial al proyecto cloud
+#    (NO uses `pnpm db:push` para esto, ese flujo es para iterar el schema
+#    en dev contra Drizzle. Para subir el SQL de supabase/migrations/ usa
+#    la CLI de Supabase, que se autentica con tu token de cuenta.)
+npx supabase login
+npx supabase link --project-ref <project-ref>
+npx supabase db push
+# Te pedirá el DB password una vez y lo guarda en supabase/.temp/.
 
 # 4. Arranca el dev server
 pnpm dev
 ```
 
 Abre `http://localhost:3000`, regístrate en `/signup`, abre el agente y ejecuta.
+
+## Setup local con Supabase Docker
+
+```bash
+pnpm install
+cp .env.example .env.local
+# Para local pon:
+#   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+#   DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+pnpm supabase:start
+# Cuando termine te imprime las claves. Cópialas en .env.local.
+# La migración se aplica automáticamente al arrancar.
+pnpm dev
+```
 
 ### Comandos útiles
 
@@ -92,7 +123,7 @@ src/
 │   └── logger.ts                 # pino
 ├── server/
 │   └── actions/                  # server actions
-├── middleware.ts                 # protección de rutas
+├── proxy.ts                      # protección de rutas (Next 16 middleware)
 └── tests/                        # vitest
 supabase/
 ├── config.toml
@@ -109,6 +140,7 @@ supabase/
 - **Agentes** viven como código TypeScript en `src/agents/<slug>` y se registran manualmente en `_registry.ts`. La tabla `agents` solo expone metadata para listar y para el FK de `agent_executions`.
 - **Sin streaming** en walking skeleton. La respuesta de Anthropic se devuelve completa en el Server Action. Streaming en una iteración posterior.
 - **Google OAuth** cableado pero deshabilitado por `NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED=false`.
+- **Migraciones**: el SQL de `supabase/migrations/` es la fuente de verdad para deploy. Se aplica con `supabase db push` (CLI de Supabase, usa tu token de cuenta). `pnpm db:push` de Drizzle es solo para iterar el schema TS en dev. Drizzle se queda en runtime para queries server-side.
 
 ## Deuda técnica conocida
 
