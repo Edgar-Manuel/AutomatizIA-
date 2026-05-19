@@ -40,5 +40,8 @@ supabase/seed.sql.local
 coverage
 .vitest
 
+# Misc
+tsconfig.tsbuildinfo
+
 # Drizzle generated artifacts (we keep migrations, ignore meta noise if needed)
 # drizzle/meta is committed by design for reproducibility
