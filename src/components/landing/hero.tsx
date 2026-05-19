@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DEPARTMENTS } from "./data";
 import {
   IconArrowRight,
@@ -244,13 +245,13 @@ export function Hero() {
               rellenas un formulario, tienes el resultado. Sin prompts ni configuración.
             </p>
             <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <a
-                href="#start"
+              <Link
+                href="/signup"
                 className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand text-white font-medium text-[14.5px] shadow-pop hover:bg-brand-700 transition-colors"
               >
                 Empezar gratis
                 <IconArrowRight size={16} stroke={2} />
-              </a>
+              </Link>
               <a
                 href="#como-funciona"
                 className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-ink-200 text-ink-900 font-medium text-[14.5px] hover:border-ink-300 transition-colors"

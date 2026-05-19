@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { IconArrowRight, IconClose, IconMenu } from "./icons";
 import { Logo } from "./logo";
@@ -41,18 +42,20 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-2">
-          <a
-            href="#login"
+          <Link
+            href="/login"
+            onClick={onClose}
             className="text-center py-3 rounded-xl border border-ink-200 text-[14px] font-medium"
           >
             Entrar
-          </a>
-          <a
-            href="#start"
+          </Link>
+          <Link
+            href="/signup"
+            onClick={onClose}
             className="text-center py-3 rounded-xl bg-ink-900 text-white text-[14px] font-medium inline-flex items-center justify-center gap-1.5"
           >
             Empezar gratis <IconArrowRight size={14} stroke={2} />
-          </a>
+          </Link>
         </div>
       </div>
     </div>
@@ -89,19 +92,19 @@ export function Nav() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <a
-              href="#login"
+            <Link
+              href="/login"
               className="hidden sm:inline-flex text-[14px] text-ink-700 hover:text-ink-900 px-3 py-2 rounded-lg"
             >
               Entrar
-            </a>
-            <a
-              href="#start"
+            </Link>
+            <Link
+              href="/signup"
               className="inline-flex items-center gap-1.5 text-[14px] font-medium bg-ink-900 text-white px-3.5 py-2 rounded-lg hover:bg-ink-700 transition-colors"
             >
               Empezar gratis
               <IconArrowRight size={14} stroke={2} />
-            </a>
+            </Link>
             <button
               type="button"
               onClick={() => setMenuOpen(true)}

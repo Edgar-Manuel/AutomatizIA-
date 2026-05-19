@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { IconArrowRight, IconCheck } from "./icons";
 
 export function FinalCTA() {
@@ -32,13 +33,13 @@ export function FinalCTA() {
             agendada, sin formularios de cinco páginas.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a
-              href="#signup"
+            <Link
+              href="/signup"
               className="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-white text-ink-900 font-semibold text-[16px] hover:bg-ink-50 transition-colors"
             >
               Empieza gratis, 20 créditos de regalo
               <IconArrowRight size={16} stroke={2.2} />
-            </a>
+            </Link>
           </div>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[12.5px] text-white/60">
             <span className="inline-flex items-center gap-1.5">

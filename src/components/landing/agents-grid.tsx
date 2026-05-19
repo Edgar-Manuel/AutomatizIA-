@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { DEPARTMENTS, FEATURED_AGENTS, type FeaturedAgent } from "./data";
 import { IconArrowRight, IconClock, IconCoin } from "./icons";
@@ -76,12 +77,12 @@ export function AgentsGrid() {
               Todos están listos. No hay que entrenarlos ni configurarlos.
             </p>
           </div>
-          <a
-            href="#start"
+          <Link
+            href="/signup"
             className="hidden md:inline-flex items-center gap-1.5 text-[13.5px] font-medium text-brand-700 hover:underline"
           >
             Ver el catálogo completo <IconArrowRight size={14} />
-          </a>
+          </Link>
         </div>
 
         <div className="mt-8 flex flex-wrap gap-1.5">
