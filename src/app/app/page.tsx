@@ -2,23 +2,37 @@ import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import {
   IconArrowRight,
-  IconCamera,
   IconClock,
   IconCoin,
-  IconMail,
-  IconReview,
-  IconSparkles,
+  IconFinance,
+  IconHR,
+  IconMarketing,
+  IconOps,
+  IconSales,
+  IconSupport,
   type LucideLikeIcon,
 } from "@/components/landing/icons";
 import { db } from "@/db/client";
-import { agentExecutions, agents } from "@/db/schema";
+import { agentExecutions, agents, type Department } from "@/db/schema";
 import { requireSessionOrRedirect } from "@/lib/auth/session";
 
-const AGENT_ICONS: Record<string, LucideLikeIcon> = {
-  "google-reviews-responder": IconReview,
-  "cold-email-writer": IconMail,
-  "instagram-copy-generator": IconCamera,
+const DEPARTMENT_META: Record<Department, { name: string; Icon: LucideLikeIcon }> = {
+  ventas: { name: "Ventas", Icon: IconSales },
+  marketing: { name: "Marketing", Icon: IconMarketing },
+  atencion_cliente: { name: "Atención Cliente", Icon: IconSupport },
+  operaciones: { name: "Operaciones", Icon: IconOps },
+  rrhh: { name: "RRHH", Icon: IconHR },
+  finanzas: { name: "Finanzas", Icon: IconFinance },
 };
+
+const DEPARTMENT_ORDER: Department[] = [
+  "ventas",
+  "marketing",
+  "atencion_cliente",
+  "operaciones",
+  "rrhh",
+  "finanzas",
+];
 
 export default async function AppDashboardPage() {
   const session = await requireSessionOrRedirect();
@@ -47,62 +61,69 @@ export default async function AppDashboardPage() {
           Buenas, ¿qué automatizamos hoy?
         </h1>
         <p className="mt-1.5 text-[14.5px] text-ink-500">
-          Estamos en fase inicial: estos son los primeros agentes del catálogo. Cada semana se
-          añaden más.
+          {activeAgents.length} agentes organizados por departamento. Elige uno, rellena el
+          formulario y llévate el resultado en segundos.
         </p>
       </section>
 
-      <section>
-        <div className="flex items-end justify-between mb-5">
-          <h2 className="text-[18px] font-semibold text-ink-900 tracking-tight">
-            Agentes disponibles
-          </h2>
-          <span className="text-[12px] text-ink-400 num-tab">
-            {activeAgents.length} activo{activeAgents.length === 1 ? "" : "s"}
-          </span>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-          {activeAgents.map((agent) => {
-            const Icon = AGENT_ICONS[agent.slug];
-            return (
-              <Link
-                key={agent.id}
-                href={`/app/agents/${agent.slug}`}
-                className="agent-card group rounded-2xl bg-white border border-ink-200 hover:border-ink-300 hover:shadow-card p-5 flex flex-col"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="w-10 h-10 rounded-xl bg-mint-50 text-mint-500 border border-mint-100 inline-flex items-center justify-center">
-                    {Icon ? <Icon size={19} /> : <IconSparkles size={19} />}
-                  </span>
-                  <span className="text-[10.5px] uppercase tracking-[0.12em] text-ink-400 mt-1.5">
-                    {agent.department.replace("_", " ")}
-                  </span>
-                </div>
-                <h3 className="mt-4 text-[15.5px] font-semibold text-ink-900 leading-snug tracking-tight">
-                  {agent.name}
-                </h3>
-                <p className="mt-1.5 text-[13.5px] text-ink-500 leading-relaxed flex-1">
-                  {agent.description}
-                </p>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-[11.5px] text-ink-400 inline-flex items-center gap-2.5">
-                    <span className="inline-flex items-center gap-1">
-                      <IconCoin size={11} /> {agent.creditsCost}
+      {DEPARTMENT_ORDER.map((dept) => {
+        const deptAgents = activeAgents.filter((a) => a.department === dept);
+        if (deptAgents.length === 0) return null;
+        const { name, Icon } = DEPARTMENT_META[dept];
+        return (
+          <section key={dept} id={`dept-${dept}`} className="scroll-mt-20">
+            <div className="flex items-end justify-between mb-5">
+              <h2 className="text-[18px] font-semibold text-ink-900 tracking-tight inline-flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-mint-50 text-mint-500 border border-mint-100 inline-flex items-center justify-center">
+                  <Icon size={15} />
+                </span>
+                {name}
+              </h2>
+              <span className="text-[12px] text-ink-400 num-tab">
+                {deptAgents.length} agente{deptAgents.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {deptAgents.map((agent) => (
+                <Link
+                  key={agent.id}
+                  href={`/app/agents/${agent.slug}`}
+                  className="agent-card group rounded-2xl bg-white border border-ink-200 hover:border-ink-300 hover:shadow-card p-5 flex flex-col"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="w-10 h-10 rounded-xl bg-mint-50 text-mint-500 border border-mint-100 inline-flex items-center justify-center">
+                      <Icon size={19} />
                     </span>
-                    <span>·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <IconClock size={11} /> &lt; 10s
+                    <span className="text-[10.5px] uppercase tracking-[0.12em] text-ink-400 mt-1.5">
+                      {agent.tierRequired}
                     </span>
-                  </span>
-                  <span className="text-[12.5px] font-medium inline-flex items-center gap-1 text-ink-900 px-2.5 py-1.5 rounded-lg border border-ink-200 group-hover:border-ink-900 transition-colors">
-                    Abrir <IconArrowRight size={12} stroke={2} />
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
+                  </div>
+                  <h3 className="mt-4 text-[15.5px] font-semibold text-ink-900 leading-snug tracking-tight">
+                    {agent.name}
+                  </h3>
+                  <p className="mt-1.5 text-[13.5px] text-ink-500 leading-relaxed flex-1">
+                    {agent.description}
+                  </p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-[11.5px] text-ink-400 inline-flex items-center gap-2.5">
+                      <span className="inline-flex items-center gap-1">
+                        <IconCoin size={11} /> {agent.creditsCost}
+                      </span>
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1">
+                        <IconClock size={11} /> &lt; 10s
+                      </span>
+                    </span>
+                    <span className="text-[12.5px] font-medium inline-flex items-center gap-1 text-ink-900 px-2.5 py-1.5 rounded-lg border border-ink-200 group-hover:border-ink-900 transition-colors">
+                      Abrir <IconArrowRight size={12} stroke={2} />
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        );
+      })}
 
       <section>
         <h2 className="text-[18px] font-semibold text-ink-900 tracking-tight mb-5">

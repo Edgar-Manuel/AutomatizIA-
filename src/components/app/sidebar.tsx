@@ -9,6 +9,16 @@ type Props = {
   activeSlug?: string;
 };
 
+// Landing DEPARTMENTS ids → department enum values used as dashboard anchors.
+const DEPT_ANCHOR: Record<string, string> = {
+  ventas: "ventas",
+  marketing: "marketing",
+  soporte: "atencion_cliente",
+  ops: "operaciones",
+  rrhh: "rrhh",
+  finanzas: "finanzas",
+};
+
 export function Sidebar({ balance, monthlyBudget, activeSlug }: Props) {
   const pct = monthlyBudget > 0 ? Math.min(100, Math.round((balance / monthlyBudget) * 100)) : 0;
 
@@ -37,7 +47,7 @@ export function Sidebar({ balance, monthlyBudget, activeSlug }: Props) {
             return (
               <li key={d.id}>
                 <Link
-                  href="/app"
+                  href={`/app#dept-${DEPT_ANCHOR[d.id] ?? d.id}`}
                   className={`flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg text-[13px] transition-colors ${
                     isActive
                       ? "bg-brand-100 text-brand-700 font-medium"

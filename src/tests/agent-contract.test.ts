@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { z } from "zod";
 import type { AgentDefinition } from "@/agents/_contract";
@@ -34,7 +36,7 @@ function assertContract<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(
 }
 
 describe("Agent contract", () => {
-  it("registers the three phase-1 agents", () => {
+  it("registers the full 50-agent catalog", () => {
     const slugs = listAgentSlugs();
     expect(slugs).toEqual(
       expect.arrayContaining([
@@ -43,7 +45,40 @@ describe("Agent contract", () => {
         "instagram-copy-generator",
       ]),
     );
-    expect(slugs.length).toBe(3);
+    expect(slugs.length).toBe(50);
+    expect(new Set(slugs).size).toBe(50);
+  });
+
+  it("matches the department split advertised on the landing", () => {
+    const byDept: Record<string, number> = {};
+    for (const slug of listAgentSlugs()) {
+      const agent = getAgent(slug);
+      if (agent) byDept[agent.department] = (byDept[agent.department] ?? 0) + 1;
+    }
+    expect(byDept).toEqual({
+      ventas: 11,
+      marketing: 9,
+      atencion_cliente: 8,
+      operaciones: 7,
+      rrhh: 8,
+      finanzas: 7,
+    });
+  });
+
+  it("offers exactly the 20 starter agents promised by the Starter plan", () => {
+    const starters = listAgentSlugs().filter((slug) => getAgent(slug)?.tier === "starter");
+    expect(starters.length).toBe(20);
+  });
+
+  it("every agent is seeded in a supabase migration", () => {
+    const dir = join(process.cwd(), "supabase", "migrations");
+    const sql = readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(join(dir, f), "utf8"))
+      .join("\n");
+    for (const slug of listAgentSlugs()) {
+      expect(sql, `slug ${slug} missing from seed migrations`).toContain(`'${slug}'`);
+    }
   });
 
   it("every registered slug resolves to an agent that satisfies the contract", () => {
