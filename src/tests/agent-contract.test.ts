@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { z } from "zod";
 import type { AgentDefinition } from "@/agents/_contract";
 import { getAgent, listAgentSlugs } from "@/agents/_registry";
+import { coldEmailWriter } from "@/agents/cold-email-writer";
 import { googleReviewsResponder } from "@/agents/google-reviews-responder";
+import { instagramCopyGenerator } from "@/agents/instagram-copy-generator";
 
 const VALID_DEPARTMENTS = [
   "ventas",
@@ -32,6 +34,18 @@ function assertContract<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(
 }
 
 describe("Agent contract", () => {
+  it("registers the three phase-1 agents", () => {
+    const slugs = listAgentSlugs();
+    expect(slugs).toEqual(
+      expect.arrayContaining([
+        "google-reviews-responder",
+        "cold-email-writer",
+        "instagram-copy-generator",
+      ]),
+    );
+    expect(slugs.length).toBe(3);
+  });
+
   it("every registered slug resolves to an agent that satisfies the contract", () => {
     const slugs = listAgentSlugs();
     expect(slugs.length).toBeGreaterThan(0);
@@ -39,6 +53,13 @@ describe("Agent contract", () => {
       const agent = getAgent(slug);
       expect(agent, `agent ${slug} not found`).not.toBeNull();
       if (agent) assertContract(agent);
+    }
+  });
+
+  it("every system prompt pins the JSON contract the runner depends on", () => {
+    for (const slug of listAgentSlugs()) {
+      const agent = getAgent(slug);
+      expect(agent?.systemPrompt).toContain('"variants"');
     }
   });
 
@@ -82,5 +103,94 @@ describe("Agent contract", () => {
       variants: [{ label: "X", text: "Demasiado corto" }],
     });
     expect(wrongLength.success).toBe(false);
+  });
+
+  it("cold email writer validates inputs", () => {
+    const ok = coldEmailWriter.inputSchema.safeParse({
+      companyName: "TurnosPro",
+      product: "Software de gestión de turnos para clínicas dentales.",
+      leadCompany: "Clínica Dental Ríos",
+      objective: "agendar-reunion",
+    });
+    expect(ok.success).toBe(true);
+
+    const optionalEmpty = coldEmailWriter.inputSchema.safeParse({
+      companyName: "TurnosPro",
+      product: "Software de gestión de turnos para clínicas dentales.",
+      leadCompany: "Clínica Dental Ríos",
+      leadName: "",
+      leadContext: "",
+      objective: "presentar-demo",
+    });
+    expect(optionalEmpty.success).toBe(true);
+
+    const missingLead = coldEmailWriter.inputSchema.safeParse({
+      companyName: "TurnosPro",
+      product: "Software de gestión de turnos para clínicas dentales.",
+      objective: "agendar-reunion",
+    });
+    expect(missingLead.success).toBe(false);
+
+    const badObjective = coldEmailWriter.inputSchema.safeParse({
+      companyName: "TurnosPro",
+      product: "Software de gestión de turnos para clínicas dentales.",
+      leadCompany: "Clínica Dental Ríos",
+      objective: "hacer-spam",
+    });
+    expect(badObjective.success).toBe(false);
+  });
+
+  it("cold email writer requires exactly 3 emails in the output", () => {
+    const email = `Asunto: huecos de agenda\n\nHola, un cuerpo de email suficientemente largo para el esquema de salida.`;
+    const good = coldEmailWriter.outputSchema.safeParse({
+      variants: [
+        { label: "Email 1 · Primer contacto", text: email },
+        { label: "Email 2 · Seguimiento", text: email },
+        { label: "Email 3 · Último toque", text: email },
+      ],
+    });
+    expect(good.success).toBe(true);
+
+    const tooFew = coldEmailWriter.outputSchema.safeParse({
+      variants: [{ label: "Email 1", text: email }],
+    });
+    expect(tooFew.success).toBe(false);
+  });
+
+  it("instagram copy generator validates inputs", () => {
+    const ok = instagramCopyGenerator.inputSchema.safeParse({
+      businessName: "La Huerta",
+      topic: "Nueva carta de otoño con platos de temporada.",
+      objective: "vender",
+      tone: "cercano",
+    });
+    expect(ok.success).toBe(true);
+
+    const shortTopic = instagramCopyGenerator.inputSchema.safeParse({
+      businessName: "La Huerta",
+      topic: "corto",
+      objective: "vender",
+      tone: "cercano",
+    });
+    expect(shortTopic.success).toBe(false);
+
+    const badTone = instagramCopyGenerator.inputSchema.safeParse({
+      businessName: "La Huerta",
+      topic: "Nueva carta de otoño con platos de temporada.",
+      objective: "vender",
+      tone: "agresivo",
+    });
+    expect(badTone.success).toBe(false);
+  });
+
+  it("instagram copy generator requires exactly 5 copies in the output", () => {
+    const copy = "Un copy de ejemplo con gancho, con longitud suficiente. #hashtag";
+    const variants = ["Gancho directo", "Historia", "Pregunta", "Dato o consejo", "Breve"].map(
+      (label) => ({ label, text: copy }),
+    );
+    expect(instagramCopyGenerator.outputSchema.safeParse({ variants }).success).toBe(true);
+    expect(
+      instagramCopyGenerator.outputSchema.safeParse({ variants: variants.slice(0, 3) }).success,
+    ).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getAgentForm } from "@/agents/_forms";
 import { getAgent } from "@/agents/_registry";
 import { AgentRunner } from "@/components/agents/agent-runner";
 import { IconArrowRight, IconBolt, IconClock, IconCoin } from "@/components/landing/icons";
@@ -19,7 +20,8 @@ export async function generateMetadata({ params }: { params: Promise<Params> }) 
 export default async function AgentPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
   const agent = getAgent(slug);
-  if (!agent) notFound();
+  const form = getAgentForm(slug);
+  if (!agent || !form) notFound();
 
   const [catalogRow] = await db
     .select()
@@ -68,7 +70,7 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
         </div>
       </header>
 
-      <AgentRunner slug={slug} creditsCost={agent.creditsCost} />
+      <AgentRunner slug={slug} creditsCost={agent.creditsCost} form={form} />
 
       <div className="text-[12.5px] text-ink-400 flex items-center gap-1">
         <span>Después de ejecutar, encuentra el resultado en </span>

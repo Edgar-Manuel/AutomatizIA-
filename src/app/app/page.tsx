@@ -1,10 +1,24 @@
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { FEATURED_AGENTS } from "@/components/landing/data";
-import { IconArrowRight, IconClock, IconCoin, IconSparkles } from "@/components/landing/icons";
+import {
+  IconArrowRight,
+  IconCamera,
+  IconClock,
+  IconCoin,
+  IconMail,
+  IconReview,
+  IconSparkles,
+  type LucideLikeIcon,
+} from "@/components/landing/icons";
 import { db } from "@/db/client";
 import { agentExecutions, agents } from "@/db/schema";
 import { requireSessionOrRedirect } from "@/lib/auth/session";
+
+const AGENT_ICONS: Record<string, LucideLikeIcon> = {
+  "google-reviews-responder": IconReview,
+  "cold-email-writer": IconMail,
+  "instagram-copy-generator": IconCamera,
+};
 
 export default async function AppDashboardPage() {
   const session = await requireSessionOrRedirect();
@@ -33,8 +47,8 @@ export default async function AppDashboardPage() {
           Buenas, ¿qué automatizamos hoy?
         </h1>
         <p className="mt-1.5 text-[14.5px] text-ink-500">
-          Estamos en walking skeleton. Hay 1 agente real disponible. El catálogo completo llega en
-          la siguiente fase.
+          Estamos en fase inicial: estos son los primeros agentes del catálogo. Cada semana se
+          añaden más.
         </p>
       </section>
 
@@ -49,10 +63,7 @@ export default async function AppDashboardPage() {
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {activeAgents.map((agent) => {
-            const meta = FEATURED_AGENTS.find(
-              (f) => f.id === "reviews" && agent.slug === "google-reviews-responder",
-            );
-            const Icon = meta?.Icon;
+            const Icon = AGENT_ICONS[agent.slug];
             return (
               <Link
                 key={agent.id}
