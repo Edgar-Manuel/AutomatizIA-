@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { TONE_LABELS, TONE_OPTIONS, type Tone } from "@/agents/google-reviews-responder/schemas";
+import type { AgentFormField, AgentFormSpec } from "@/agents/_form";
 import {
   IconBolt,
   IconCheck,
@@ -13,21 +13,49 @@ import {
 } from "@/components/landing/icons";
 import { type RunAgentResult, runAgent } from "@/server/actions/run-agent";
 
-type Props = { slug: string; creditsCost: number };
+type Props = { slug: string; creditsCost: number; form: AgentFormSpec };
 
 type Variant = { label: string; text: string };
 
-export function AgentRunner({ slug, creditsCost }: Props) {
+type FormValues = Record<string, string | number>;
+
+const INPUT_CLASSES =
+  "w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-paper text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand";
+
+function initialValues(form: AgentFormSpec): FormValues {
+  const values: FormValues = {};
+  for (const field of form.fields) {
+    if (field.defaultValue !== undefined) {
+      values[field.name] = field.defaultValue;
+    } else if (field.type === "stars") {
+      values[field.name] = 4;
+    } else if (field.type === "select") {
+      values[field.name] = field.options?.[0]?.value ?? "";
+    } else {
+      values[field.name] = "";
+    }
+  }
+  return values;
+}
+
+function toPayload(values: FormValues): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(values)) {
+    payload[key] = value === "" ? undefined : value;
+  }
+  return payload;
+}
+
+export function AgentRunner({ slug, creditsCost, form }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<RunAgentResult | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
+  const [values, setValues] = useState<FormValues>(() => initialValues(form));
 
-  const [review, setReview] = useState("");
-  const [rating, setRating] = useState(4);
-  const [reviewerName, setReviewerName] = useState("");
-  const [businessName, setBusinessName] = useState("");
-  const [tone, setTone] = useState<Tone>("cercano-profesional");
+  function setValue(name: string, value: string | number) {
+    setValues((prev) => ({ ...prev, [name]: value }));
+  }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -36,13 +64,7 @@ export function AgentRunner({ slug, creditsCost }: Props) {
     const startedAt = Date.now();
 
     startTransition(async () => {
-      const res = await runAgent(slug, {
-        review,
-        rating,
-        reviewerName: reviewerName || undefined,
-        businessName,
-        tone,
-      });
+      const res = await runAgent(slug, toPayload(values));
       setDurationMs(Date.now() - startedAt);
       setResult(res);
       if (res.ok) router.refresh();
@@ -59,75 +81,17 @@ export function AgentRunner({ slug, creditsCost }: Props) {
       >
         <div className="text-[10.5px] uppercase tracking-[0.14em] text-ink-400">Formulario</div>
 
-        <Field label="Reseña del cliente" required hint="Pega el texto completo, sin recortar.">
-          <textarea
-            value={review}
-            onChange={(e) => setReview(e.target.value)}
-            required
-            minLength={15}
-            maxLength={2000}
-            rows={5}
-            placeholder="Llevo años yendo y el trato es excelente..."
-            className="w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-paper text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand resize-y"
-          />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Estrellas" required>
-            <div className="flex items-center gap-0.5 px-3 py-2.5 rounded-xl border border-ink-200 bg-paper">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <button
-                  type="button"
-                  key={i}
-                  onClick={() => setRating(i)}
-                  aria-label={`${i} estrellas`}
-                  className={`p-0.5 ${i <= rating ? "text-coral" : "text-ink-300"} hover:scale-110 transition-transform`}
-                >
-                  <IconStar size={18} className={i <= rating ? "fill-current" : ""} />
-                </button>
-              ))}
-              <span className="ml-auto text-[12px] text-ink-500 num-tab">{rating}/5</span>
-            </div>
-          </Field>
-
-          <Field label="Tono" required>
-            <select
-              value={tone}
-              onChange={(e) => setTone(e.target.value as Tone)}
-              className="w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-paper text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
-            >
-              {TONE_OPTIONS.map((t) => (
-                <option key={t} value={t}>
-                  {TONE_LABELS[t]}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
         <div className="grid sm:grid-cols-2 gap-3">
-          <Field label="Nombre del negocio" required>
-            <input
-              type="text"
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              required
-              maxLength={80}
-              placeholder="Clínica Dental Ríos"
-              className="w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-paper text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
-            />
-          </Field>
-
-          <Field label="Cliente (opcional)" hint="Si lo conoces, lo usamos al saludar.">
-            <input
-              type="text"
-              value={reviewerName}
-              onChange={(e) => setReviewerName(e.target.value)}
-              maxLength={80}
-              placeholder="Carlos M."
-              className="w-full px-3 py-2.5 rounded-xl border border-ink-200 bg-paper text-[14px] focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
-            />
-          </Field>
+          {form.fields.map((field) => (
+            <div
+              key={field.name}
+              className={field.type === "textarea" || field.fullWidth ? "sm:col-span-2" : undefined}
+            >
+              <Field label={field.label} required={field.required} hint={field.hint}>
+                <FieldInput field={field} value={values[field.name]} onChange={setValue} />
+              </Field>
+            </div>
+          ))}
         </div>
 
         <button
@@ -155,17 +119,14 @@ export function AgentRunner({ slug, creditsCost }: Props) {
 
         {!result && !pending && (
           <div className="flex-1 flex items-center justify-center text-center px-6">
-            <p className="text-[13.5px] text-ink-500 max-w-sm">
-              Rellena la reseña, elige tono y pulsa{" "}
-              <span className="font-medium text-ink-900">Ejecutar</span>. Te devuelve 3 variantes en
-              menos de 10 segundos.
-            </p>
+            <p className="text-[13.5px] text-ink-500 max-w-sm">{form.resultNote}</p>
           </div>
         )}
 
         {pending && (
           <div className="space-y-3 flex-1">
-            {[0, 1, 2].map((i) => (
+            {Array.from({ length: form.expectedVariants }, (_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
               <div key={i} className="space-y-2">
                 <div className="h-3 w-24 rounded-md shimmer" />
                 <div className="h-3 rounded-md shimmer" />
@@ -215,6 +176,81 @@ export function AgentRunner({ slug, creditsCost }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+function FieldInput({
+  field,
+  value,
+  onChange,
+}: {
+  field: AgentFormField;
+  value: string | number | undefined;
+  onChange: (name: string, value: string | number) => void;
+}) {
+  if (field.type === "textarea") {
+    return (
+      <textarea
+        value={String(value ?? "")}
+        onChange={(e) => onChange(field.name, e.target.value)}
+        required={field.required}
+        minLength={field.minLength}
+        maxLength={field.maxLength}
+        rows={field.rows ?? 4}
+        placeholder={field.placeholder}
+        className={`${INPUT_CLASSES} resize-y`}
+      />
+    );
+  }
+
+  if (field.type === "select") {
+    return (
+      <select
+        value={String(value ?? "")}
+        onChange={(e) => onChange(field.name, e.target.value)}
+        required={field.required}
+        className={INPUT_CLASSES}
+      >
+        {field.options?.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (field.type === "stars") {
+    const rating = typeof value === "number" ? value : 4;
+    return (
+      <div className="flex items-center gap-0.5 px-3 py-2.5 rounded-xl border border-ink-200 bg-paper">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <button
+            type="button"
+            key={i}
+            onClick={() => onChange(field.name, i)}
+            aria-label={`${i} estrellas`}
+            className={`p-0.5 ${i <= rating ? "text-coral" : "text-ink-300"} hover:scale-110 transition-transform`}
+          >
+            <IconStar size={18} className={i <= rating ? "fill-current" : ""} />
+          </button>
+        ))}
+        <span className="ml-auto text-[12px] text-ink-500 num-tab">{rating}/5</span>
+      </div>
+    );
+  }
+
+  return (
+    <input
+      type="text"
+      value={String(value ?? "")}
+      onChange={(e) => onChange(field.name, e.target.value)}
+      required={field.required}
+      minLength={field.minLength}
+      maxLength={field.maxLength}
+      placeholder={field.placeholder}
+      className={INPUT_CLASSES}
+    />
   );
 }
 
