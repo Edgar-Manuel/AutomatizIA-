@@ -26,6 +26,8 @@ export const agentExecutions = pgTable("agent_executions", {
   outputTokens: integer("output_tokens"),
   cacheReadTokens: integer("cache_read_tokens"),
   cacheWriteTokens: integer("cache_write_tokens"),
+  /** Anthropic list-price cost of the run, in micro dollars (1e-6 USD). */
+  costUsdMicros: integer("cost_usd_micros"),
   creditsCharged: integer("credits_charged").notNull().default(0),
   durationMs: integer("duration_ms"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),

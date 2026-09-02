@@ -1,6 +1,7 @@
 import type { ZodTypeAny, z } from "zod";
 import type { AgentModel } from "@/db/schema";
 import { anthropic, resolveModel } from "@/lib/anthropic/client";
+import { recordUsage } from "@/lib/anthropic/usage";
 import { translateAnthropicError } from "@/lib/errors";
 
 export function extractJson(text: string): unknown {
@@ -47,6 +48,10 @@ export async function runJsonAgentCompletion<Output extends ZodTypeAny>(args: {
         },
       ],
     });
+
+    // Recorded before the response is validated: those tokens are billed by
+    // Anthropic whether or not the model returned usable JSON.
+    recordUsage(response.usage);
 
     const textBlock = response.content.find((b) => b.type === "text");
     if (!textBlock || textBlock.type !== "text") {

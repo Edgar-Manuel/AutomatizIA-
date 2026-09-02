@@ -7,6 +7,8 @@ import { z } from "zod";
 import { getAgent } from "@/agents/_registry";
 import { db } from "@/db/client";
 import { agentExecutions, agents } from "@/db/schema";
+import { computeCostUsdMicros, formatUsdMicros, type TokenUsage } from "@/lib/anthropic/pricing";
+import { createUsageScope } from "@/lib/anthropic/usage";
 import { requireSession } from "@/lib/auth/session";
 import { chargeCreditsAtomic, refundCreditsAtomic } from "@/lib/credits/charge";
 import { AgentNotFound, AppError, InvalidInput } from "@/lib/errors";
@@ -19,6 +21,8 @@ export type RunAgentResult =
       output: unknown;
       creditsCharged: number;
       durationMs: number;
+      usage: TokenUsage;
+      costUsdMicros: number;
     }
   | {
       ok: false;
@@ -93,16 +97,27 @@ export async function runAgent(slug: string, rawInput: unknown): Promise<RunAgen
       throw chargeErr;
     }
 
+    const usageScope = createUsageScope();
     let output: unknown;
     try {
-      output = await agent.execute(input, {
-        organizationId: session.organizationId,
-        userId: session.userId,
-        executionId,
-      });
+      output = await usageScope.run(() =>
+        agent.execute(input, {
+          organizationId: session.organizationId,
+          userId: session.userId,
+          executionId,
+        }),
+      );
     } catch (executionErr) {
       const message = executionErr instanceof Error ? executionErr.message : String(executionErr);
-      logger.error({ slug, executionId, err: message }, "agent_execute_failed");
+      // A run can fail after the model answered (bad JSON, schema mismatch).
+      // Those tokens are billed to us, so they are recorded even though the
+      // customer is refunded.
+      const failedUsage = usageScope.usage();
+      const failedCost = computeCostUsdMicros(agent.model, failedUsage);
+      logger.error(
+        { slug, executionId, err: message, ...failedUsage, costUsdMicros: failedCost },
+        "agent_execute_failed",
+      );
 
       await refundCreditsAtomic({
         organizationId: session.organizationId,
@@ -118,6 +133,8 @@ export async function runAgent(slug: string, rawInput: unknown): Promise<RunAgen
           errorMessage: message.slice(0, 500),
           completedAt: new Date(),
           creditsCharged: 0,
+          ...failedUsage,
+          costUsdMicros: failedCost,
         })
         .where(eq(agentExecutions.id, executionId));
 
@@ -125,6 +142,8 @@ export async function runAgent(slug: string, rawInput: unknown): Promise<RunAgen
     }
 
     const durationMs = Date.now() - startedAt;
+    const usage = usageScope.usage();
+    const costUsdMicros = computeCostUsdMicros(agent.model, usage);
 
     await db
       .update(agentExecutions)
@@ -134,8 +153,24 @@ export async function runAgent(slug: string, rawInput: unknown): Promise<RunAgen
         completedAt: new Date(),
         durationMs,
         creditsCharged: agent.creditsCost,
+        ...usage,
+        costUsdMicros,
       })
       .where(eq(agentExecutions.id, executionId));
+
+    logger.info(
+      {
+        slug,
+        executionId,
+        model: agent.model,
+        durationMs,
+        creditsCharged: agent.creditsCost,
+        ...usage,
+        costUsdMicros,
+        cost: formatUsdMicros(costUsdMicros),
+      },
+      "agent_execute_succeeded",
+    );
 
     revalidatePath("/app", "layout");
 
@@ -145,6 +180,8 @@ export async function runAgent(slug: string, rawInput: unknown): Promise<RunAgen
       output,
       creditsCharged: agent.creditsCost,
       durationMs,
+      usage,
+      costUsdMicros,
     };
   } catch (err) {
     return toErrorPayload(err);
