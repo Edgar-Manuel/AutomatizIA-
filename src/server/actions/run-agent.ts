@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getAgent } from "@/agents/_registry";
 import { db } from "@/db/client";
-import { agentExecutions, agents } from "@/db/schema";
+import { agentExecutions } from "@/db/schema";
 import { computeCostUsdMicros, formatUsdMicros, type TokenUsage } from "@/lib/anthropic/pricing";
 import { createUsageScope } from "@/lib/anthropic/usage";
 import { requireSession } from "@/lib/auth/session";
@@ -187,6 +187,3 @@ export async function runAgent(slug: string, rawInput: unknown): Promise<RunAgen
     return toErrorPayload(err);
   }
 }
-
-// Re-export for tests
-export { agents };
